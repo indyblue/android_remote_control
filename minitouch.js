@@ -1,27 +1,28 @@
-const { exec, execSync, bindir } = require('./mini0'),
+const { exec, execSync, bindir, fwdAbs } = require('./mini0'),
   ptool = require('path'),
   net = require('net');
 
+const name = 'minitouch';
 const exp = module.exports = {
   port: 1718,
-  adir: '/data/local/tmp/minitouch',
+  adir: '/data/local/tmp/' + name,
   webSockets: [],
-  action: null
+  action: null,
+  debug: false
 };
 /**************************************************************************** */
 // child process stuff
 /**************************************************************************** */
-let out = execSync(`adb shell rm -rf ${exp.adir}`);
-out = execSync(`adb shell mkdir ${exp.adir}`);
+let out = execSync(`adb shell mkdir ${exp.adir}`);
 
 const bdir = 'node_modules/minitouch-prebuilt/prebuilt';
 
 let dir = bindir(bdir);
-out = execSync(`adb push ${dir}/minitouch ${exp.adir}/`);
+out = execSync(`adb push ${dir}/${name} ${exp.adir}/`);
 
-out = execSync(`adb forward tcp:${exp.port} localabstract:minitouch`);
+out = fwdAbs(exp.port, name);
 
-const cpMinitouch = exec(`adb shell ${exp.adir}/minitouch`);
+const cpMinitouch = exec(`adb shell ${exp.adir}/${name}`);
 cpMinitouch.stdout.on('data', d => {
   setTimeout(() => {
     if (!cstrMinitouch.active) cstrMinitouch();
@@ -61,11 +62,19 @@ function cstrMinitouch() {
           txt = `\n${type} 0 ${x} ${y} 50 ${c}`;
         }
         suc = stream.write(txt);
-        console.log('touch', type, x, y, suc);
+        if (exp.debug) console.log('touch', type, x, y, suc);
       };
 
     } catch (e) { }
   });
 
+  const onExit = () => {
+    console.log('stopping stream', exp.port);
+    execSync(`adb shell killall ${name}`);
+    execSync(`adb shell rm -rf ${exp.adir}`);
+    stream.end();
+  };
+  process.on('exit', onExit);
+  process.on('SIGTERM', onExit);
 }
 /**************************************************************************** */

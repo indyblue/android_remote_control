@@ -43,7 +43,6 @@
 
   ws.onopen = function () {
     console.log('onopen', arguments)
-    ws.send('1920x1080/0')
   }
 
   canvas.mdown = false;
@@ -51,7 +50,7 @@
   function mouseHandler(t, e) {
     var x = e.clientX / canvas.scrollWidth, y = e.clientY / canvas.scrollHeight;
     ws.send(JSON.stringify({ t: t, x: x, y: y }));
-    console.log(t, canvas.mdown, e.clientX, e.clientY, canvas.scrollWidth, canvas.scrollHeight);
+    //console.log(t, canvas.mdown, e.clientX, e.clientY, canvas.scrollWidth, canvas.scrollHeight);
   }
   canvas.addEventListener('mousemove', function (e) {
     if (!canvas.mdown) return;

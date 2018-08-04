@@ -24,8 +24,10 @@ wss.on('connection', function (ws) {
   sockets.push(ws);
   console.info('Got a client')
 
+  minicap.sendLastFrame(ws);
+
   ws.on('message', function (d) {
-    console.log(d);
+    //console.log(d);
     let j = null;
     try { j = JSON.parse(d); } catch (e) { }
     if (typeof minitouch.action === 'function' && j && j.t) {
@@ -42,4 +44,18 @@ wss.on('connection', function (ws) {
 server.listen(PORT);
 console.info('Listening on port %d', PORT);
 
+process.stdin.setEncoding('utf8');
+process.stdin.resume();
+process.stdin.on('data', d => {
+  d = d.trim();
+  console.log(d, d === 'q');
+  if (d === 'q') process.exit();
+});
+
+const onExit = () => {
+  console.log('stopping server', PORT);
+  server.close();
+};
+process.on('exit', onExit);
+process.on('SIGTERM', onExit);
 

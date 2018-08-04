@@ -1,35 +1,33 @@
-const { exec, execSync, bindir, libdir } = require('./mini0'),
+const { exec, execSync, bindir, libdir, fwdAbs, info } = require('./mini0'),
   ptool = require('path'),
   net = require('net');
 
+const name = 'minicap';
 const exp = module.exports = {
   port: 1717,
-  adir: '/data/local/tmp/minicap',
+  adir: '/data/local/tmp/' + name,
   webSockets: [],
   debug: false
 };
 /**************************************************************************** */
 // child process stuff
 /**************************************************************************** */
-let out = execSync(`adb shell rm -rf ${exp.adir}`);
-out = execSync(`adb shell mkdir ${exp.adir}`);
-
-const [w, h] = execSync(`sh -c "adb shell dumpsys window | grep -Eo 'init=[0-9]+x[0-9]+'"`).match(/\d+/g)
+let out = execSync(`adb shell mkdir ${exp.adir}`);
 
 const bdir = 'node_modules/minicap-prebuilt/prebuilt';
 
 let dir = bindir(bdir);
-out = execSync(`adb push ${dir}/minicap ${exp.adir}/`);
+out = execSync(`adb push ${dir}/${name} ${exp.adir}/`);
 
 dir = libdir(bdir);
-out = execSync(`adb push ${dir}/minicap.so ${exp.adir}/`);
+out = execSync(`adb push ${dir}/${name}.so ${exp.adir}/`);
 
-out = execSync(`adb forward tcp:${exp.port} localabstract:minicap`);
+out = fwdAbs(exp.port, name);
 
-let w2 = Math.round(w / 2), h2 = Math.round(h / 2);
+let w = info.w, h = info.h, w2 = Math.round(w / 2), h2 = Math.round(h / 2);
 let args = `-P ${w}x${h}@${w2}x${h2}/0 -S`;
 
-const cpMinicap = exec(`adb shell LD_LIBRARY_PATH=${exp.adir}/ ${exp.adir}/minicap ${args}`);
+const cpMinicap = exec(`adb shell LD_LIBRARY_PATH=${exp.adir}/ ${exp.adir}/${name} ${args}`);
 cpMinicap.stdout.on('data', d => {
   setTimeout(() => {
     if (!cstrMinicap.active) cstrMinicap();
@@ -66,6 +64,14 @@ function cstrMinicap() {
       , orientation: 0
       , quirks: 0
     };
+
+  let lastFrame = null;
+  exp.sendLastFrame = ws => {
+    if (lastFrame) {
+      console.log('sending initial frame', lastFrame.length);
+      ws.send(lastFrame, { binary: true });
+    }
+  };
 
   stream.on('readable', tryRead)
 
@@ -162,6 +168,7 @@ function cstrMinicap() {
               process.exit(1)
             }
 
+            lastFrame = frameBody;
             for (let ws of exp.webSockets) ws.send(frameBody, {
               binary: true
             })
@@ -186,6 +193,15 @@ function cstrMinicap() {
       }
     }
   }
+
+  const onExit = () => {
+    console.log('stopping stream', exp.port);
+    execSync(`adb shell killall ${name}`);
+    execSync(`adb shell rm -rf ${exp.adir}`);
+    stream.end();
+  };
+  process.on('exit', onExit);
+  process.on('SIGTERM', onExit);
 }
 
 /**************************************************************************** */
