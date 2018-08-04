@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "minicap-prebuilt": "^2.2.0",
+    "minitouch-prebuilt": "^1.2.0",
+    "ws": "^0.7.2"
+  }
+}
