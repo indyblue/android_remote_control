@@ -34,6 +34,9 @@ wss.on('connection', function (ws) {
     if (j) {
       if (j.event === 'mouse') minitouch.action(j.t, j.x, j.y);
       else if (j.event === 'key') minisvc.onKey(j.key, j.mods, j.isDown);
+      else if (j.event === 'getclip') minisvc.getClip().then(msg =>
+        ws.send(JSON.stringify(msg)));
+      else if (j.event === 'setclip') minisvc.setClip(j.text);
     }
   });
   ws.on('close', function () {

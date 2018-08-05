@@ -1,93 +1,154 @@
 <!doctype html>
-<canvas id="canvas" style="border: 1px solid red;"></canvas>
+<html>
 
-<script>
-  /*jshint browser:true*/
-
-  var BLANK_IMG =
-    'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='
-
-  var canvas = document.getElementById('canvas')
-    , g = canvas.getContext('2d')
-
-  canvas.style.maxHeight = (window.innerHeight - 50) + 'px';
-  var ws = new WebSocket('ws://localhost:9002', 'minicap')
-  ws.binaryType = 'blob'
-
-  ws.onclose = function () {
-    console.log('onclose', arguments)
-  }
-
-  ws.onerror = function () {
-    console.log('onerror', arguments)
-  }
-
-  ws.onmessage = function (message) {
-    var blob = new Blob([message.data], { type: 'image/jpeg' })
-    var URL = window.URL || window.webkitURL
-    var img = new Image()
-    img.onload = function () {
-      //console.log(img.width, img.height)
-      canvas.width = img.width
-      canvas.height = img.height
-      g.drawImage(img, 0, 0)
-      img.onload = null
-      img.src = BLANK_IMG
-      img = null
-      u = null
-      blob = null
+<head>
+  <title>Android Remote Session</title>
+  <meta charset="UTF-8" />
+  <style>
+    body {
+      display: grid;
     }
-    var u = URL.createObjectURL(blob)
-    img.src = u
-  }
 
-  ws.onopen = function () {
-    console.log('onopen', arguments)
-  }
-
-  canvas.mdown = false;
-  canvas.debounce = 0;
-  function mouseHandler(t, e) {
-    var x = e.clientX / canvas.scrollWidth, y = e.clientY / canvas.scrollHeight;
-    ws.send(JSON.stringify({ event: 'mouse', t: t, x: x, y: y }));
-    //console.log(t, canvas.mdown, e.clientX, e.clientY, canvas.scrollWidth, canvas.scrollHeight);
-  }
-  canvas.addEventListener('mousemove', function (e) {
-    if (!canvas.mdown) return;
-    if (!canvas.debounce) {
-      canvas.debounce++;
-      mouseHandler('m', e);
-      setTimeout(() => {
-        canvas.debounce = 0;
-      }, 100);
+    #canvas {
+      grid-area: 1/1/5/2;
+      width: auto;
+      height: auto;
     }
-  });
-  canvas.addEventListener('mousedown', function (e) {
-    canvas.mdown = true;
-    mouseHandler('d', e);
-  });
-  canvas.addEventListener('mouseup', function (e) {
+
+    #get-clip {
+      grid-area: 1/2;
+    }
+
+    #set-clip {
+      grid-area: 1/3;
+    }
+
+    #txt-clip {
+      grid-area: 2/2/6/4;
+    }
+  </style>
+</head>
+
+<body>
+  <canvas tabindex="1" id="canvas" style="border: 1px solid red;"></canvas>
+  <button tabindex="2" id="get-clip">Get Clipboard</button>
+  <button tabindex="3" id="set-clip">Set Clipboard</button>
+  <textarea tabindex="4" id="txt-clip"></textarea>
+  <script>
+    /*jshint browser:true*/
+
+    var BLANK_IMG =
+      'data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='
+
+    var canvas = document.getElementById('canvas')
+      , g = canvas.getContext('2d')
+
+    canvas.style.maxHeight = (window.innerHeight - 50) + 'px';
+    var ws = new WebSocket('ws://localhost:9002', 'minicap')
+    ws.binaryType = 'blob'
+
+    ws.onclose = function () {
+      console.log('onclose', arguments)
+    }
+
+    ws.onerror = function () {
+      console.log('onerror', arguments)
+    }
+
+    ws.onmessage = function (message) {
+      if (typeof message.data === 'string') {
+        let j = null;
+        try { j = JSON.parse(message.data); } catch (e) { }
+        if (j) {
+          if (j.type == 'GetClipboardResponse') getClipResponse(j);
+        }
+      } else {
+        var blob = new Blob([message.data], { type: 'image/jpeg' })
+        var URL = window.URL || window.webkitURL
+        var img = new Image()
+        img.onload = function () {
+          //console.log(img.width, img.height)
+          canvas.width = img.width
+          canvas.height = img.height
+          g.drawImage(img, 0, 0)
+          img.onload = null
+          img.src = BLANK_IMG
+          img = null
+          u = null
+          blob = null
+        }
+        var u = URL.createObjectURL(blob)
+        img.src = u
+      }
+    }
+
+    ws.onopen = function () {
+      console.log('onopen', arguments)
+    }
+
     canvas.mdown = false;
-    mouseHandler('u', e);
-  });
-
-  function keyHandler(e, isDown) {
-    var cl = e.getModifierState('CapsLock');
-    var obj = {
-      event: 'key', key: e.keyCode,
-      mods: [e.shiftKey, e.ctrlKey, e.altKey, e.metaKey, cl], isDown
+    canvas.debounce = 0;
+    function mouseHandler(t, e) {
+      var x = e.clientX / canvas.scrollWidth, y = e.clientY / canvas.scrollHeight;
+      ws.send(JSON.stringify({ event: 'mouse', t: t, x: x, y: y }));
+      //console.log(t, canvas.mdown, e.clientX, e.clientY, canvas.scrollWidth, canvas.scrollHeight);
     }
-    var json = JSON.stringify(obj);
-    console.log(json);
-    ws.send(json);
-  }
-  document.addEventListener('keydown', function (e) {
-    keyHandler(e, true);
-    e.preventDefault();
-  });
-  document.addEventListener('keyup', function (e) {
-    keyHandler(e, false);
-    e.preventDefault();
-  });
+    canvas.addEventListener('mousemove', function (e) {
+      if (!canvas.mdown) return;
+      if (!canvas.debounce) {
+        canvas.debounce++;
+        mouseHandler('m', e);
+        setTimeout(() => {
+          canvas.debounce = 0;
+        }, 100);
+      }
+    });
+    canvas.addEventListener('mousedown', function (e) {
+      canvas.mdown = true;
+      mouseHandler('d', e);
+    });
+    canvas.addEventListener('mouseup', function (e) {
+      canvas.mdown = false;
+      mouseHandler('u', e);
+    });
 
-</script>
+    function keyHandler(e, isDown) {
+      var cl = e.getModifierState('CapsLock');
+      var obj = {
+        event: 'key', key: e.keyCode,
+        mods: [e.shiftKey, e.ctrlKey, e.altKey, e.metaKey, cl], isDown
+      }
+      var json = JSON.stringify(obj);
+      console.log(json);
+      ws.send(json);
+    }
+    canvas.addEventListener('keydown', function (e) {
+      keyHandler(e, true);
+      e.preventDefault();
+    });
+    canvas.addEventListener('keyup', function (e) {
+      keyHandler(e, false);
+      e.preventDefault();
+    });
+
+    var getClip = document.getElementById('get-clip');
+    var txtClip = document.getElementById('txt-clip');
+    var setClip = document.getElementById('set-clip');
+    getClip.onclick = function (e) {
+      txtClip.allowUpdate = true;
+      ws.send(JSON.stringify({ event: 'getclip' }));
+    };
+    setClip.onclick = function (e) {
+      ws.send(JSON.stringify({ event: 'setclip', text: txtClip.value }));
+    };
+    function getClipResponse(j) {
+      if (txtClip.allowUpdate) {
+        txtClip.value = j.message.text;
+        txtClip.allowUpdate = false;
+      }
+    }
+
+  </script>
+</body>
+
+</html>

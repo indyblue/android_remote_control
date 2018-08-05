@@ -33,27 +33,56 @@ function fnServiceStuff(pb) {
   let service = execSocket(`adb shell am startservice --user 0 \
     -a jp.co.cyberagent.stf.ACTION_START \
     -n jp.co.cyberagent.stf/.Service`,
-    sPort, 'stfservice', svcData, svcExit);
+    sPort, 'stfservice', cbData, svcExit);
 
   let agent = execSocket(`adb shell export CLASSPATH="${dir}"\\; \
     exec app_process /system/bin jp.co.cyberagent.stf.Agent`,
-    aPort, 'stfagent', agtData);
+    aPort, 'stfagent', cbData);
 
-  function svcData(d) {
-    console.log('svc', pb.handleMessage(d));
-  }
   function svcExit() {
     execSync(`adb uninstall jp.co.cyberagent.stf`);
   };
 
-  function agtData(d) {
-    console.log('agt', pb.handleMessage(d));
+  const respRes = ['blank'],
+    addRes = (res, rej) => {
+      let id = respRes.indexOf(null);
+      if (id <= 0) id = respRes.length;
+      respRes[id] = res;
+      setTimeout(() => {
+        if (respRes[id]) {
+          respRes[id] = null;
+          if (typeof rej === 'function') rej('service response timeout');
+        }
+      }, 10000);
+      return id;
+    },
+    resolveRes = (id, retval) => {
+      if (typeof id !== 'number' || id == 0) return;
+      var cb = respRes[id];
+      if (typeof cb === 'function') cb(retval);
+      else console.log('could not match promise for service/agent response', id, retval);
+      respRes[id] = null;
+    };
+  function cbData(d) {
+    var msg = pb.handleMessage(d);
+    resolveRes(msg.id, msg);
+    console.log(msg);
   }
 
   exp.onKey = (code, mods, isDown) => {
-    var kp = pb.doKey(code, mods, isDown);
-    agent.socket.write(kp);
+    var req = pb.doKey(code, mods, isDown);
+    agent.socket.write(req);
   };
+  exp.getClip = () => new Promise((res, rej) => {
+    let id = addRes(res, rej);
+    var req = pb.getClip(id);
+    service.socket.write(req);
+  });
+  exp.setClip = (txt) => new Promise((res, rej) => {
+    let id = addRes(res, rej);
+    var req = pb.setClip(id, txt);
+    service.socket.write(req);
+  });
 
   // https://github.com/openstf/STFService.apk
   // https://github.com/openstf/STFService.apk/blob/master/app/src/main/proto/wire.proto
