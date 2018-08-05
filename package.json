@@ -4,5 +4,24 @@
     "minitouch-prebuilt": "^1.2.0",
     "protobufjs": "^6.8.8",
     "ws": "^0.7.2"
-  }
+  },
+  "name": "android_remote",
+  "description": "Very lightweight android remote view/control over ADB.",
+  "version": "1.0.0",
+  "main": "app.js",
+  "devDependencies": {},
+  "scripts": {
+    "start": "node app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/indyblue/android_remote_control.git"
+  },
+  "author": "DAS",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/indyblue/android_remote_control/issues"
+  },
+  "homepage": "https://github.com/indyblue/android_remote_control#readme"
 }
