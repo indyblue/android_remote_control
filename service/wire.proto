@@ -39,7 +39,7 @@ enum MessageType {
 
 enum MessageName {
     DoIdentify_ = 1;
-    DoKeyevent_ = 2;
+    KeyEvent_ = 2;
     DoType_ = 3;
     DoWake_ = 4;
     DoAddAccountMenu_ = 24;

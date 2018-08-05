@@ -1,36 +1,22 @@
-const { exec, execSync, fwdAbs } = require('./mini0'),
+const { execSocket, execSync, fwdAbs } = require('./mini0'),
   ptool = require('path'),
   fs = require('fs'),
   https = require('https'),
   net = require('net'),
-  protobuf = require("protobufjs");
+  pbsvc = require('./service/');
+
+
+const exp = module.exports = {};
 
 async function main() {
-  var [pbroot] = await Promise.all([
-    protobuf.load('./wire.proto'),
+  var [pb] = await Promise.all([
+    pbsvc.load(),
     loadStfService()
   ]);
-  var pb = pbSetup(pbroot);
   fnServiceStuff(pb);
 }
 main();
 
-function pbSetup(root) {
-  var t = { root, package: 'jp.co.cyberagent.stf.proto' };
-  var lt = n => t.root.lookupType(t.package + '.' + n);
-  var le = n => t.root.lookupEnum(t.package + '.' + n);
-  t.envelope = lt("Envelope");
-  t.messageName = le("MessageName");
-  t.handleMessage = (m, isReq) => {
-    var req = isReq ? 'Request' : 'Response',
-      env = t.envelope.decodeDelimited(m),
-      type = (t.messageName.valuesById[env.type] || '').replace(/_$/, req),
-      message = '';
-    if (type) message = lt(type).decode(env.message);
-    return { type, message };
-  };
-  return t;
-}
 
 function fnServiceStuff(pb) {
 
@@ -44,43 +30,36 @@ function fnServiceStuff(pb) {
 
   let sPort = 1719, aPort = 1720;
 
-  fwdAbs(sPort, 'stfservice');
-  let service = exec(`adb shell am startservice --user 0 \
+  let service = execSocket(`adb shell am startservice --user 0 \
     -a jp.co.cyberagent.stf.ACTION_START \
-    -n jp.co.cyberagent.stf/.Service`);
+    -n jp.co.cyberagent.stf/.Service`,
+    sPort, 'stfservice', svcData, svcExit);
 
+  let agent = execSocket(`adb shell export CLASSPATH="${dir}"\\; \
+    exec app_process /system/bin jp.co.cyberagent.stf.Agent`,
+    aPort, 'stfagent', agtData);
 
-  fwdAbs(aPort, 'stfservice');
-  let agent = exec(`adb shell export CLASSPATH="${dir}"\; \
-    exec app_process /system/bin jp.co.cyberagent.stf.Agent`);
+  function svcData(d) {
+    console.log('svc', pb.handleMessage(d));
+  }
+  function svcExit() {
+    execSync(`adb uninstall jp.co.cyberagent.stf`);
+  };
 
-  var svcStream = net.connect({ port: sPort });
-  svcStream.on('data', d => {
-    console.log(pb.handleMessage(d));
-    //var msg = pbEnvelope.decode(d);
-  });
+  function agtData(d) {
+    console.log('agt', pb.handleMessage(d));
+  }
 
-  var agtStream = net.connect({ port: aPort });
-  agtStream.on('data', d => {
-    console.log(pb.handleMessage(d));
-    //var msg = pbEnvelope.decode(d);
-  });
+  exp.onKey = (code, mods, isDown) => {
+    var kp = pb.doKey(code, mods, isDown);
+    agent.socket.write(kp);
+  };
 
-  /*
-  //other option is, but it's slow:
-  adb shell input keyevent nnn
-  adb shell input text \"text\\\" asdf\'... \"
-  
-  https://github.com/openstf/STFService.apk
-  https://github.com/openstf/STFService.apk/blob/master/app/src/main/proto/wire.proto
-  https://www.npmjs.com/package/protobufjs#using-proto-files
-
-  // register service to be uninstalled on process end/SIGTERM
-  adb uninstall jp.co.cyberagent.stf
-  */
+  // https://github.com/openstf/STFService.apk
+  // https://github.com/openstf/STFService.apk/blob/master/app/src/main/proto/wire.proto
+  // https://www.npmjs.com/package/protobufjs#using-proto-files
 
 }
-
 
 /**************************************************************************** */
 // STFService.apk - download and install
@@ -117,3 +96,4 @@ function fetchFile(url, fname, cbdone) {
     });
   });
 }
+

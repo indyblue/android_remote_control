@@ -3,7 +3,8 @@ var WebSocketServer = require('ws').Server
   , fs = require('fs')
   , ptool = require('path')
   , minicap = require('./minicap')
-  , minitouch = require('./minitouch');
+  , minitouch = require('./minitouch')
+  , minisvc = require('./miniservice');
 
 var PORT = process.env.PORT || 9002
 
@@ -30,8 +31,9 @@ wss.on('connection', function (ws) {
     //console.log(d);
     let j = null;
     try { j = JSON.parse(d); } catch (e) { }
-    if (typeof minitouch.action === 'function' && j && j.t) {
-      minitouch.action(j.t, j.x, j.y);
+    if (j) {
+      if (j.event === 'mouse') minitouch.action(j.t, j.x, j.y);
+      else if (j.event === 'key') minisvc.onKey(j.key, j.mods, j.isDown);
     }
   });
   ws.on('close', function () {

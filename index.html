@@ -27,7 +27,7 @@
     var URL = window.URL || window.webkitURL
     var img = new Image()
     img.onload = function () {
-      console.log(img.width, img.height)
+      //console.log(img.width, img.height)
       canvas.width = img.width
       canvas.height = img.height
       g.drawImage(img, 0, 0)
@@ -49,7 +49,7 @@
   canvas.debounce = 0;
   function mouseHandler(t, e) {
     var x = e.clientX / canvas.scrollWidth, y = e.clientY / canvas.scrollHeight;
-    ws.send(JSON.stringify({ t: t, x: x, y: y }));
+    ws.send(JSON.stringify({ event: 'mouse', t: t, x: x, y: y }));
     //console.log(t, canvas.mdown, e.clientX, e.clientY, canvas.scrollWidth, canvas.scrollHeight);
   }
   canvas.addEventListener('mousemove', function (e) {
@@ -69,6 +69,25 @@
   canvas.addEventListener('mouseup', function (e) {
     canvas.mdown = false;
     mouseHandler('u', e);
+  });
+
+  function keyHandler(e, isDown) {
+    var cl = e.getModifierState('CapsLock');
+    var obj = {
+      event: 'key', key: e.keyCode,
+      mods: [e.shiftKey, e.ctrlKey, e.altKey, e.metaKey, cl], isDown
+    }
+    var json = JSON.stringify(obj);
+    console.log(json);
+    ws.send(json);
+  }
+  document.addEventListener('keydown', function (e) {
+    keyHandler(e, true);
+    e.preventDefault();
+  });
+  document.addEventListener('keyup', function (e) {
+    keyHandler(e, false);
+    e.preventDefault();
   });
 
 </script>

@@ -1,5 +1,6 @@
 const cp = require('child_process'),
-  ptool = require('path');
+  ptool = require('path'),
+  net = require('net');
 
 const info = {};
 info.abi = execSync('adb shell getprop ro.product.cpu.abi');
@@ -34,8 +35,33 @@ const libdir = (base) => ptool.join(base, info.abi, 'lib', 'android-' + info.sdk
 
 const fwdAbs = (hport, absname) => execSync(`adb forward tcp:${hport} localabstract:${absname}`);
 const fwdPort = (hport, aport) => execSync(`adb forward tcp:${hport} localabstract:${aport}`);
+
+const execSocket = (cmd, port, name, cbData, cbExit) => {
+  fwdAbs(port, name);
+  const proc = exec(cmd);
+  proc.stdout.on('data', d => {
+    if (!proc.hasSocket) setTimeout(() => {
+      if (proc.hasSocket) return; proc.hasSocket = true;
+      proc.socket = net.connect({ port });
+      proc.socket.on('data', cbData);
+      proc.socket.on('end', () => {
+        console.log(`socket ${port}/${name} has closed - program may need to be restarted.`);
+      });
+      const onExit = () => {
+        console.log('stopping stream', port);
+        if (typeof cbExit === 'function') cbExit();
+        proc.socket.end();
+      };
+      process.on('exit', onExit);
+      process.on('SIGTERM', onExit);
+
+    }, 100);
+  });
+  return proc;
+};
+
 module.exports = {
-  info, exec, execSync,
+  info, exec, execSync, execSocket,
   bindir, libdir,
   fwdAbs, fwdPort
 };
