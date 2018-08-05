@@ -33,6 +33,7 @@ wss.on('connection', function (ws) {
     try { j = JSON.parse(d); } catch (e) { }
     if (j) {
       if (j.event === 'mouse') minitouch.action(j.t, j.x, j.y);
+      else if (j.event === 'power') minisvc.doPower();
       else if (j.event === 'key') minisvc.onKey(j.key, j.mods, j.isDown);
       else if (j.event === 'getclip') minisvc.getClip().then(msg =>
         ws.send(JSON.stringify(msg)));

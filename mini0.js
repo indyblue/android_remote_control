@@ -42,23 +42,34 @@ const execSocket = (cmd, port, name, cbData, cbExit) => {
   proc.stdout.on('data', d => {
     if (!proc.hasSocket) setTimeout(() => {
       if (proc.hasSocket) return; proc.hasSocket = true;
-      proc.socket = net.connect({ port });
-      proc.socket.on('data', cbData);
-      proc.socket.on('end', () => {
-        console.log(`socket ${port}/${name} has closed - program may need to be restarted.`);
-      });
-      const onExit = () => {
-        console.log('stopping stream', port);
-        if (typeof cbExit === 'function') cbExit();
-        proc.socket.end();
-      };
-      process.on('exit', onExit);
-      process.on('SIGTERM', onExit);
-
+      trySocket(proc, port, name, cbData, cbExit);
     }, 100);
   });
   return proc;
 };
+
+function trySocket(proc, port, name, cbData, cbExit) {
+  console.log('starting stream', port, name, proc.socketTry);
+  proc.socket = net.connect({ port });
+  proc.socket.on('data', cbData);
+  proc.socket.on('error', err => console.log('stream error', port, name, err));
+  proc.socket.on('end', () => {
+    console.log(`socket ${port}/${name} has closed - program may need to be restarted.`);
+    if(!proc.socketTry) proc.socketTry=1;
+    else proc.socketTry++;
+    if(proc.socketTry<5) setTimeout(() => {
+      trySocket(proc, port, name, cbData, cbExit);
+    }, 2000);
+  });
+  const onExit = () => {
+    console.log('stopping stream', port);
+    if (typeof cbExit === 'function') cbExit();
+    proc.socket.end();
+  };
+  process.on('exit', onExit);
+  process.on('SIGTERM', onExit);
+
+}
 
 module.exports = {
   info, exec, execSync, execSocket,

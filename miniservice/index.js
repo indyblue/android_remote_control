@@ -1,9 +1,9 @@
-const { execSocket, execSync, fwdAbs } = require('./mini0'),
+const { execSocket, execSync, fwdAbs } = require('../mini0'),
   ptool = require('path'),
   fs = require('fs'),
   https = require('https'),
   net = require('net'),
-  pbsvc = require('./service/');
+  pbsvc = require('./protobuf');
 
 
 const exp = module.exports = {};
@@ -19,7 +19,6 @@ main();
 
 
 function fnServiceStuff(pb) {
-
   let dir = execSync(`adb shell pm path jp.co.cyberagent.stf`).trim().replace(/^.*:/, '');
 
   // install service and set it up for keyboard usage
@@ -27,6 +26,10 @@ function fnServiceStuff(pb) {
     execSync(`adb install STFService.apk`);
     dir = execSync(`adb shell pm path jp.co.cyberagent.stf`).trim().replace(/^.*:/, '');
   }
+
+  execSync(`adb shell am stopservice --user 0 \
+    -a jp.co.cyberagent.stf.ACTION_STOP \
+    -n jp.co.cyberagent.stf/.Service`);
 
   let sPort = 1719, aPort = 1720;
 
@@ -40,10 +43,14 @@ function fnServiceStuff(pb) {
     aPort, 'stfagent', cbData);
 
   function svcExit() {
-    execSync(`adb uninstall jp.co.cyberagent.stf`);
+    //execSync(`adb uninstall jp.co.cyberagent.stf`);
+    execSync(`adb shell am stopservice --user 0 \
+    -a jp.co.cyberagent.stf.ACTION_STOP \
+    -n jp.co.cyberagent.stf/.Service`);
   };
 
-  const respRes = ['blank'],
+  const dataBuff = new ArrayBuffer(0),
+    respRes = ['blank'],
     addRes = (res, rej) => {
       let id = respRes.indexOf(null);
       if (id <= 0) id = respRes.length;
@@ -63,12 +70,19 @@ function fnServiceStuff(pb) {
       else console.log('could not match promise for service/agent response', id, retval);
       respRes[id] = null;
     };
+
   function cbData(d) {
-    var msg = pb.handleMessage(d);
+    var msg=null;
+    try { msg = pb.handleMessage(d); } catch (e) { }
+    if(msg==null) return;
     resolveRes(msg.id, msg);
-    console.log(msg);
+    if (msg && msg.type != 'BatteryEvent') console.log(JSON.stringify(msg));
   }
 
+  exp.doPower = () => {
+    var req = pb.doPower();
+    agent.socket.write(req);
+  };
   exp.onKey = (code, mods, isDown) => {
     var req = pb.doKey(code, mods, isDown);
     agent.socket.write(req);

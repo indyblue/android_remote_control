@@ -15,25 +15,30 @@
       height: auto;
     }
 
-    #get-clip {
+    #power {
       grid-area: 1/2;
     }
 
+    #get-clip {
+      grid-area: 1/3/1/5;
+    }
+
     #set-clip {
-      grid-area: 1/3;
+      grid-area: 1/5/1/7;
     }
 
     #txt-clip {
-      grid-area: 2/2/6/4;
+      grid-area: 2/2/6/7;
     }
   </style>
 </head>
 
 <body>
   <canvas tabindex="1" id="canvas" style="border: 1px solid red;"></canvas>
-  <button tabindex="2" id="get-clip">Get Clipboard</button>
-  <button tabindex="3" id="set-clip">Set Clipboard</button>
-  <textarea tabindex="4" id="txt-clip"></textarea>
+  <button tabindex="2" id="power">Power</button>
+  <button tabindex="3" id="get-clip">Get Clipboard</button>
+  <button tabindex="4" id="set-clip">Set Clipboard</button>
+  <textarea tabindex="5" id="txt-clip"></textarea>
   <script>
     /*jshint browser:true*/
 
@@ -44,18 +49,8 @@
       , g = canvas.getContext('2d')
 
     canvas.style.maxHeight = (window.innerHeight - 50) + 'px';
-    var ws = new WebSocket('ws://localhost:9002', 'minicap')
-    ws.binaryType = 'blob'
 
-    ws.onclose = function () {
-      console.log('onclose', arguments)
-    }
-
-    ws.onerror = function () {
-      console.log('onerror', arguments)
-    }
-
-    ws.onmessage = function (message) {
+    function wsOnMessage(message) {
       if (typeof message.data === 'string') {
         let j = null;
         try { j = JSON.parse(message.data); } catch (e) { }
@@ -81,10 +76,23 @@
         img.src = u
       }
     }
+    var ws;
+    function createWs() {
+      ws = new WebSocket('ws://localhost:9002', 'minicap')
+      ws.binaryType = 'blob'
 
-    ws.onopen = function () {
-      console.log('onopen', arguments)
+      ws.onclose = function () {
+        console.log('ws close...try reopen in 2 seconds');
+        setTimeout(createWs, 2000);
+      }
+
+      ws.onopen = function () { console.log('ws open'); };
+      ws.onerror = function () { console.log('ws error', arguments); };
+
+      ws.onmessage = wsOnMessage;
+
     }
+    createWs();
 
     canvas.mdown = false;
     canvas.debounce = 0;
@@ -130,6 +138,11 @@
       keyHandler(e, false);
       e.preventDefault();
     });
+
+    var bPower = document.getElementById('power');
+    bPower.onclick = function (e) {
+      ws.send(JSON.stringify({ event: 'power' }));
+    };
 
     var getClip = document.getElementById('get-clip');
     var txtClip = document.getElementById('txt-clip');

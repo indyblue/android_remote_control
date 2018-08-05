@@ -39,6 +39,10 @@ exp.load = async () => {
     };
     return encType('KeyEventRequest', event);
   };
+  obj.doPower = () => {
+    var event = { event: tKey.PRESS, keyCode: 26 };
+    return encType('KeyEventRequest', event);
+  };
 
   var tClip = le('ClipboardType').values;
   obj.setClip = (id, text) => {
