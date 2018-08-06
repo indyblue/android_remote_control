@@ -118,7 +118,7 @@ function loadStfService() {
 }
 
 function fetchFile(url, fname, cbdone) {
-  return new Promise((res, rej) => {
+  return new Promise((resolve, reject) => {
     https.get(url, (res) => {
       if (res.statusCode === 302) return fetchFile(res.headers.location, fname);
       else if (res.statusCode === 200 && res.headers['content-type'] === "application/octet-stream") {
@@ -126,14 +126,14 @@ function fetchFile(url, fname, cbdone) {
         res.pipe(fstream);
         res.on('end', () => {
           console.log('complete: ', fname);
-          res(fname);
+          resolve(fname);
         });
       } else {
         var out = '';
         res.on('data', d => out += d.toString());
         res.on('end', () => {
           console.log('problem getting file', fname, out);
-          rej(out);
+          reject(out);
         });
       }
     });

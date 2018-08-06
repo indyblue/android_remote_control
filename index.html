@@ -78,7 +78,7 @@
     }
     var ws;
     function createWs() {
-      ws = new WebSocket('ws://localhost:9002', 'minicap')
+      ws = new WebSocket('ws://'+window.location.host, 'minicap')
       ws.binaryType = 'blob'
 
       ws.onclose = function () {
