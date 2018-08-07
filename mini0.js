@@ -19,8 +19,8 @@ function exec(cmd) {
   let proc = cp.exec(cmd, {
     encoding: 'utf8'
   });
-  proc.stdout.on('data', console.log);
-  proc.stderr.on('data', console.log);
+  proc.stdout.on('data', d=> console.log('stdout', d));
+  proc.stderr.on('data', d=> console.log('stderr', d));
   const killCP = () => {
     console.log('stopping proc:' + cmd);
     proc.kill();
@@ -49,26 +49,27 @@ const execSocket = (cmd, port, name, cbData, cbExit) => {
 };
 
 function trySocket(proc, port, name, cbData, cbExit) {
+  if (!proc.socketTry) proc.socketTry = 1;
+  else proc.socketTry++;
   console.log('starting stream', port, name, proc.socketTry);
   proc.socket = net.connect({ port });
   proc.socket.on('data', cbData);
   proc.socket.on('error', err => console.log('stream error', port, name, err));
   proc.socket.on('end', () => {
     console.log(`socket ${port}/${name} has closed - program may need to be restarted.`);
-    if(!proc.socketTry) proc.socketTry=1;
-    else proc.socketTry++;
-    if(proc.socketTry<5) setTimeout(() => {
+    if (proc.socketTry < 5) setTimeout(() => {
       trySocket(proc, port, name, cbData, cbExit);
     }, 2000);
   });
-  const onExit = () => {
-    console.log('stopping stream', port);
-    if (typeof cbExit === 'function') cbExit();
-    proc.socket.end();
-  };
-  process.on('exit', onExit);
-  process.on('SIGTERM', onExit);
-
+  if (proc.socketTry == 1) {
+    const onExit = () => {
+      console.log('stopping stream', port);
+      if (typeof cbExit === 'function') cbExit();
+      proc.socket.end();
+    };
+    process.on('exit', onExit);
+    process.on('SIGTERM', onExit);
+  }
 }
 
 module.exports = {

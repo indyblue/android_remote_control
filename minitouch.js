@@ -21,11 +21,11 @@ const bdir = 'node_modules/minitouch-prebuilt/prebuilt';
 let dir = bindir(bdir);
 out = execSync(`adb push ${dir}/${name} ${exp.adir}/`);
 
-const procMT = execSocket(`adb shell ${exp.adir}/${name}`,
+const procMT = execSocket(`adb shell -x ${exp.adir}/${name}`,
   exp.port, name, cbData, cbExit);
 
 function cbExit() {
-  execSync(`adb shell killall ${name}`);
+  execSync(`adb shell -x killall ${name}`);
   execSync(`adb shell rm -rf ${exp.adir}`);
 }
 

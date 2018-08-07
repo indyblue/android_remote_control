@@ -40,6 +40,7 @@
   <button tabindex="4" id="set-clip">Set Clipboard</button>
   <textarea tabindex="5" id="txt-clip"></textarea>
   <script>
+    var debug = false;
     /*jshint browser:true*/
 
     var BLANK_IMG =
@@ -62,7 +63,7 @@
         var URL = window.URL || window.webkitURL
         var img = new Image()
         img.onload = function () {
-          //console.log(img.width, img.height)
+          //if(debug) console.log(img.width, img.height)
           canvas.width = img.width
           canvas.height = img.height
           g.drawImage(img, 0, 0)
@@ -99,7 +100,7 @@
     function mouseHandler(t, e) {
       var x = e.clientX / canvas.scrollWidth, y = e.clientY / canvas.scrollHeight;
       ws.send(JSON.stringify({ event: 'mouse', t: t, x: x, y: y }));
-      //console.log(t, canvas.mdown, e.clientX, e.clientY, canvas.scrollWidth, canvas.scrollHeight);
+      if(debug) console.log(t, canvas.mdown, e.clientX, e.clientY, canvas.scrollWidth, canvas.scrollHeight);
     }
     canvas.addEventListener('mousemove', function (e) {
       if (!canvas.mdown) return;
@@ -127,7 +128,7 @@
         mods: [e.shiftKey, e.ctrlKey, e.altKey, e.metaKey, cl], isDown
       }
       var json = JSON.stringify(obj);
-      console.log(json);
+      if(debug) console.log(json);
       ws.send(json);
     }
     canvas.addEventListener('keydown', function (e) {

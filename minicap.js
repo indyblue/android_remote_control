@@ -26,11 +26,11 @@ out = execSync(`adb push ${dir}/${name}.so ${exp.adir}/`);
 let w = info.w, h = info.h, w2 = Math.round(w / 2), h2 = Math.round(h / 2);
 let args = `-P ${w}x${h}@${w2}x${h2}/0 -S`;
 
-const cpMinicap = execSocket(`adb shell LD_LIBRARY_PATH=${exp.adir}/ ${exp.adir}/${name} ${args}`,
+const cpMinicap = execSocket(`adb shell -x LD_LIBRARY_PATH=${exp.adir}/ ${exp.adir}/${name} ${args}`,
   exp.port, name, cbData, cbExit);
 
 function cbExit() {
-  execSync(`adb shell killall ${name}`);
+  execSync(`adb shell -x killall ${name}`);
   execSync(`adb shell rm -rf ${exp.adir}`);
 }
 

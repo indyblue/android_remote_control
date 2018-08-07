@@ -19,7 +19,7 @@ main();
 
 
 function fnServiceStuff(pb) {
-  let dir = execSync(`adb shell pm path jp.co.cyberagent.stf`).trim().replace(/^.*:/, '');
+  let dir = execSync(`adb shell -x pm path jp.co.cyberagent.stf`).trim().replace(/^.*:/, '');
 
   // install service and set it up for keyboard usage
   if (!dir) {
@@ -27,26 +27,27 @@ function fnServiceStuff(pb) {
     dir = execSync(`adb shell pm path jp.co.cyberagent.stf`).trim().replace(/^.*:/, '');
   }
 
-  execSync(`adb shell am stopservice --user 0 \
+  execSync(`adb shell -x am stopservice \
     -a jp.co.cyberagent.stf.ACTION_STOP \
     -n jp.co.cyberagent.stf/.Service`);
 
   let sPort = 1719, aPort = 1720;
 
-  let service = execSocket(`adb shell am startservice --user 0 \
+  let service = execSocket(`adb shell -x am startservice \
     -a jp.co.cyberagent.stf.ACTION_START \
     -n jp.co.cyberagent.stf/.Service`,
     sPort, 'stfservice', cbData, svcExit);
 
-  let agent = execSocket(`adb shell export CLASSPATH="${dir}"\\; \
+  let agent = execSocket(`adb shell -x export CLASSPATH="${dir}"\\; \
     exec app_process /system/bin jp.co.cyberagent.stf.Agent`,
     aPort, 'stfagent', cbData);
 
   function svcExit() {
-    //execSync(`adb uninstall jp.co.cyberagent.stf`);
-    execSync(`adb shell am stopservice --user 0 \
-    -a jp.co.cyberagent.stf.ACTION_STOP \
-    -n jp.co.cyberagent.stf/.Service`);
+    execSync(`adb shell -x am stopservice \
+      -a jp.co.cyberagent.stf.ACTION_STOP \
+      -n jp.co.cyberagent.stf/.Service`);
+    if (process.argv.indexOf('-u') > 0)
+      execSync(`adb uninstall jp.co.cyberagent.stf`);
   };
 
   const dataBuff = new ArrayBuffer(0),
@@ -72,9 +73,9 @@ function fnServiceStuff(pb) {
     };
 
   function cbData(d) {
-    var msg=null;
+    var msg = null;
     try { msg = pb.handleMessage(d); } catch (e) { }
-    if(msg==null) return;
+    if (msg == null) return;
     resolveRes(msg.id, msg);
     if (msg && msg.type != 'BatteryEvent') console.log(JSON.stringify(msg));
   }
