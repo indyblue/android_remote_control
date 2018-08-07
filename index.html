@@ -5,40 +5,56 @@
   <title>Android Remote Session</title>
   <meta charset="UTF-8" />
   <style>
-    body {
-      display: grid;
+    .fc {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .fc>*,
+    .fr>* {
+      flex: 1;
+    }
+
+    .f0 {
+      flex: 0 !important;
+    }
+
+    .fr {
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+    }
+
+    .bb {
+      border: 1px solid black;
     }
 
     #canvas {
-      grid-area: 1/1/5/2;
-      width: auto;
-      height: auto;
-    }
-
-    #power {
-      grid-area: 1/2;
-    }
-
-    #get-clip {
-      grid-area: 1/3/1/5;
-    }
-
-    #set-clip {
-      grid-area: 1/5/1/7;
-    }
-
-    #txt-clip {
-      grid-area: 2/2/6/7;
+      display: inline-block;
     }
   </style>
 </head>
 
-<body>
-  <canvas tabindex="1" id="canvas" style="border: 1px solid red;"></canvas>
-  <button tabindex="2" id="power">Power</button>
-  <button tabindex="3" id="get-clip">Get Clipboard</button>
-  <button tabindex="4" id="set-clip">Set Clipboard</button>
-  <textarea tabindex="5" id="txt-clip"></textarea>
+<body class='fr'>
+  <div class='f0'>
+    <canvas class='bb' tabindex="1" id="canvas"></canvas>
+  </div>
+  <div class='fc'>
+    <div class='fr f0'>
+      <button tabindex="2" id="power">Power</button>
+      <button tabindex="3" id="get-clip">Get Clipboard</button>
+      <button tabindex="4" id="set-clip">Set Clipboard</button>
+    </div>
+    <textarea tabindex="5" id="txt-clip"></textarea>
+    <div class='fr f0'>
+      <button tabindex="6" id="list-ports">Ports</button>
+      <input tabindex='7' id='port-num' />
+      <button tabindex="8" id="fwd-port">Fwd</button>
+      <button tabindex="9" id="rev-port">Rev</button>
+    </div>
+    <div class='bb' style='white-space: pre;' id='port-list'>&nbsp;</div>
+  </div>
   <script>
     var debug = false;
     /*jshint browser:true*/
@@ -57,6 +73,7 @@
         try { j = JSON.parse(message.data); } catch (e) { }
         if (j) {
           if (j.type == 'GetClipboardResponse') getClipResponse(j);
+          if (j.type == 'ports') getPortsResponse(j);
         }
       } else {
         var blob = new Blob([message.data], { type: 'image/jpeg' })
@@ -79,7 +96,7 @@
     }
     var ws;
     function createWs() {
-      ws = new WebSocket('ws://'+window.location.host, 'minicap')
+      ws = new WebSocket('ws://' + window.location.host, 'minicap')
       ws.binaryType = 'blob'
 
       ws.onclose = function () {
@@ -100,7 +117,7 @@
     function mouseHandler(t, e) {
       var x = e.clientX / canvas.scrollWidth, y = e.clientY / canvas.scrollHeight;
       ws.send(JSON.stringify({ event: 'mouse', t: t, x: x, y: y }));
-      if(debug) console.log(t, canvas.mdown, e.clientX, e.clientY, canvas.scrollWidth, canvas.scrollHeight);
+      if (debug) console.log(t, canvas.mdown, e.clientX, e.clientY, canvas.scrollWidth, canvas.scrollHeight);
     }
     canvas.addEventListener('mousemove', function (e) {
       if (!canvas.mdown) return;
@@ -128,7 +145,7 @@
         mods: [e.shiftKey, e.ctrlKey, e.altKey, e.metaKey, cl], isDown
       }
       var json = JSON.stringify(obj);
-      if(debug) console.log(json);
+      if (debug) console.log(json);
       ws.send(json);
     }
     canvas.addEventListener('keydown', function (e) {
@@ -161,6 +178,24 @@
         txtClip.allowUpdate = false;
       }
     }
+
+    var lstPorts = document.getElementById('list-ports');
+    var portList = document.getElementById('port-list');
+    var fwdPort = document.getElementById('fwd-port');
+    var revPort = document.getElementById('rev-port');
+    var portNum = document.getElementById('port-num');
+    lstPorts.onclick = function () {
+      ws.send(JSON.stringify({ event: 'listports' }));
+    };
+    function getPortsResponse(j) {
+      portList.innerHTML = j.data;
+    }
+    fwdPort.onclick = function () {
+      ws.send(JSON.stringify({ event: 'addport', rev: false, port: portNum.value }));
+    };
+    revPort.onclick = function () {
+      ws.send(JSON.stringify({ event: 'addport', rev: true, port: portNum.value }));
+    };
 
   </script>
 </body>

@@ -4,7 +4,9 @@ var WebSocketServer = require('ws').Server
   , ptool = require('path')
   , minicap = require('./minicap')
   , minitouch = require('./minitouch')
-  , minisvc = require('./miniservice');
+  , minisvc = require('./miniservice'),
+  { addPort, listPorts } = require('./mini0');
+
 
 var PORT = process.env.PORT || 9002
 
@@ -38,6 +40,11 @@ wss.on('connection', function (ws) {
       else if (j.event === 'getclip') minisvc.getClip().then(msg =>
         ws.send(JSON.stringify(msg)));
       else if (j.event === 'setclip') minisvc.setClip(j.text);
+      else if (j.event === 'listports') ws.send(JSON.stringify({ type: 'ports', data: listPorts() }));
+      else if (j.event === 'addport') {
+        for (var p of j.port.split(',')) addPort(p, j.rev);
+        ws.send(JSON.stringify({ type: 'ports', data: listPorts() }));
+      }
     }
   });
   ws.on('close', function () {
@@ -63,5 +70,6 @@ const onExit = () => {
   server.close();
 };
 process.on('exit', onExit);
-process.on('SIGTERM', onExit);
+process.on('SIGTERM', () => process.exit(1));
+process.on('SIGINT', () => process.exit(1));
 

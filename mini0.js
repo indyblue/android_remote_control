@@ -7,6 +7,35 @@ info.abi = execSync('adb shell getprop ro.product.cpu.abi');
 info.sdk = execSync('adb shell getprop ro.build.version.sdk');
 [info.w, info.h] = execSync(`sh -c "adb shell dumpsys window | grep -Eo 'init=[0-9]+x[0-9]+'"`).match(/\d+/g)
 
+if (process.argv.indexOf('-f') < 0) {
+  let show_touches = execSync('adb shell settings get system show_touches');
+  let scr_off_time = execSync('adb shell settings get system screen_off_timeout');
+  let scr_bl_mode = execSync('adb shell settings get system screen_brightness_mode');
+  let scr_bl = execSync('adb shell settings get system screen_brightness');
+  execSync('adb shell settings put system show_touches 1');
+  execSync('adb shell settings put system screen_off_timeout 2147483647');
+  execSync('adb shell settings put system screen_brightness_mode 0');
+  execSync('adb shell settings put system screen_brightness 0');
+
+  const killReset = () => {
+    execSync(`adb shell settings put system show_touches ${show_touches}`);
+    execSync(`adb shell settings put system screen_off_timeout ${scr_off_time}`);
+    execSync(`adb shell settings put system screen_brightness ${scr_bl}`);
+    execSync(`adb shell settings put system screen_brightness_mode ${scr_bl_mode}`);
+  };
+  process.on('exit', killReset);
+}
+
+const listPorts = () => {
+  let fwd = execSync('adb forward --list');
+  let rev = execSync('adb reverse --list');
+  return `forward:\n${fwd}\n\nreverse:\n${rev}`;
+};
+const addPort = (port, rev) => {
+  let type = rev ? 'reverse' : 'forward';
+  let fwd = execSync(`adb ${type} tcp:${port} tcp:${port}`);
+};
+
 function execSync(cmd) {
   console.log('execSync', cmd);
   let out = cp.execSync(cmd, { encoding: 'utf8' }).trim();
@@ -19,14 +48,13 @@ function exec(cmd) {
   let proc = cp.exec(cmd, {
     encoding: 'utf8'
   });
-  proc.stdout.on('data', d=> console.log('stdout', d));
-  proc.stderr.on('data', d=> console.log('stderr', d));
+  proc.stdout.on('data', d => console.log('stdout', d));
+  proc.stderr.on('data', d => console.log('stderr', d));
   const killCP = () => {
     console.log('stopping proc:' + cmd);
     proc.kill();
   };
   process.on('exit', killCP);
-  process.on('SIGTERM', killCP);
   return proc;
 }
 
@@ -75,5 +103,6 @@ function trySocket(proc, port, name, cbData, cbExit) {
 module.exports = {
   info, exec, execSync, execSocket,
   bindir, libdir,
+  listPorts, addPort,
   fwdAbs, fwdPort
 };
