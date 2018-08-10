@@ -1,3 +1,4 @@
+'option strict';
 const { execSocket, execSync, bindir, fwdAbs } = require('./mini0'),
   ptool = require('path'),
   net = require('net');
@@ -13,7 +14,13 @@ const exp = module.exports = {
 /**************************************************************************** */
 // child process stuff
 /**************************************************************************** */
-cbExit();
+exp.onExit = () => {
+  execSync(`adb shell -x killall ${name}`);
+  execSync(`adb shell rm -rf ${exp.adir}`);
+  execSync(`adb shell ls ${exp.adir}`);
+};
+exp.onExit();
+
 let out = execSync(`adb shell mkdir ${exp.adir}`);
 
 const bdir = 'node_modules/minitouch-prebuilt/prebuilt';
@@ -22,12 +29,8 @@ let dir = bindir(bdir);
 out = execSync(`adb push ${dir}/${name} ${exp.adir}/`);
 
 const procMT = execSocket(`adb shell -x ${exp.adir}/${name}`,
-  exp.port, name, cbData, cbExit);
+  exp.port, name, cbData);
 
-function cbExit() {
-  execSync(`adb shell -x killall ${name}`);
-  execSync(`adb shell rm -rf ${exp.adir}`);
-}
 
 function cbData(d) {
   d = d.toString();

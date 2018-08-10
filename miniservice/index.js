@@ -1,12 +1,9 @@
-const { execSocket, execSync, fwdAbs } = require('../mini0'),
-  ptool = require('path'),
-  fs = require('fs'),
-  https = require('https'),
-  net = require('net'),
+'option strict';
+const { execSocket, execSync, fetchFile } = require('../mini0'),
   pbsvc = require('./protobuf');
 
 
-const exp = module.exports = {};
+const exp = module.exports = { debug: false };
 
 async function main() {
   var [pb] = await Promise.all([
@@ -36,13 +33,13 @@ function fnServiceStuff(pb) {
   let service = execSocket(`adb shell -x am startservice \
     -a jp.co.cyberagent.stf.ACTION_START \
     -n jp.co.cyberagent.stf/.Service`,
-    sPort, 'stfservice', cbData, svcExit);
+    sPort, 'stfservice', cbData);
 
   let agent = execSocket(`adb shell -x export CLASSPATH="${dir}"\\; \
     exec app_process /system/bin jp.co.cyberagent.stf.Agent`,
     aPort, 'stfagent', cbData);
 
-  function svcExit() {
+  exp.onExit = () => {
     execSync(`adb shell -x am stopservice \
       -a jp.co.cyberagent.stf.ACTION_STOP \
       -n jp.co.cyberagent.stf/.Service`);
@@ -110,34 +107,7 @@ function fnServiceStuff(pb) {
 /**************************************************************************** */
 function loadStfService() {
   const fname = './STFService.apk';
-  if (!fs.existsSync(fname)) {
-    const url = 'https://github.com/openstf/stf/raw/master/vendor/STFService/STFService.apk';
-    console.log('getting from github: ', fname);
-    return fetchFile(url, fname, fnServiceStuff);
-  }
-  else return Promise.resolve(fname);
+  const url = 'https://github.com/openstf/stf/raw/master/vendor/STFService/STFService.apk';
+  console.log('getting from github: ', fname);
+  return fetchFile(url, fname, fnServiceStuff);
 }
-
-function fetchFile(url, fname, cbdone) {
-  return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
-      if (res.statusCode === 302) return fetchFile(res.headers.location, fname);
-      else if (res.statusCode === 200 && res.headers['content-type'] === "application/octet-stream") {
-        let fstream = fs.createWriteStream(fname);
-        res.pipe(fstream);
-        res.on('end', () => {
-          console.log('complete: ', fname);
-          resolve(fname);
-        });
-      } else {
-        var out = '';
-        res.on('data', d => out += d.toString());
-        res.on('end', () => {
-          console.log('problem getting file', fname, out);
-          reject(out);
-        });
-      }
-    });
-  });
-}
-

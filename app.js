@@ -1,16 +1,16 @@
+'option strict';
 var WebSocketServer = require('ws').Server
   , http = require('http')
   , fs = require('fs')
   , ptool = require('path')
   , minicap = require('./minicap')
   , minitouch = require('./minitouch')
-  , minisvc = require('./miniservice'),
-  { addPort, listPorts } = require('./mini0');
-
+  , minisvc = require('./miniservice')
+  , minitether = require('./minitether')
+  , mini0 = require('./mini0')
+  , { addPort, listPorts } = require('./mini0');
 
 var PORT = process.env.PORT || 9002
-
-
 
 const page = ptool.join(__dirname, 'index.html');
 function requestListener(req, res) {
@@ -45,6 +45,11 @@ wss.on('connection', function (ws) {
         for (var p of j.port.split(',')) addPort(p, j.rev);
         ws.send(JSON.stringify({ type: 'ports', data: listPorts() }));
       }
+      else if (j.event === 'debug') {
+        console.log('debug', j.val);
+        minicap.debug = j.val;
+        minitouch.debug = j.val;
+      }
     }
   });
   ws.on('close', function () {
@@ -67,7 +72,12 @@ process.stdin.on('data', d => {
 
 const onExit = () => {
   console.log('stopping server', PORT);
+  minicap.onExit();
+  minitouch.onExit();
+  minisvc.onExit();
+  minitether.onExit();
   server.close();
+  mini0.onExit();
 };
 process.on('exit', onExit);
 process.on('SIGTERM', () => process.exit(1));

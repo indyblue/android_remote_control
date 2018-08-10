@@ -1,3 +1,4 @@
+'option strict';
 const { execSocket, execSync, bindir, libdir, fwdAbs, info } = require('./mini0'),
   ptool = require('path'),
   net = require('net');
@@ -7,12 +8,19 @@ const exp = module.exports = {
   port: 1717,
   adir: '/data/local/tmp/' + name,
   webSockets: [],
-  debug: false
+  debug: false,
+  superDebug: false
 };
 /**************************************************************************** */
 // child process stuff
 /**************************************************************************** */
-cbExit();
+exp.onExit = () => {
+  execSync(`adb shell -x killall ${name}`);
+  execSync(`adb shell rm -rf ${exp.adir}`);
+  execSync(`adb shell ls ${exp.adir}`);
+};
+exp.onExit();
+
 let out = execSync(`adb shell mkdir ${exp.adir}`);
 
 const bdir = 'node_modules/minicap-prebuilt/prebuilt';
@@ -27,12 +35,8 @@ let w = info.w, h = info.h, w2 = Math.round(w / 2), h2 = Math.round(h / 2);
 let args = `-P ${w}x${h}@${w2}x${h2}/0 -S`;
 
 const cpMinicap = execSocket(`adb shell -x LD_LIBRARY_PATH=${exp.adir}/ ${exp.adir}/${name} ${args}`,
-  exp.port, name, cbData, cbExit);
+  exp.port, name, cbData);
 
-function cbExit() {
-  execSync(`adb shell -x killall ${name}`);
-  execSync(`adb shell rm -rf ${exp.adir}`);
-}
 
 let readBannerBytes = 0,
   bannerLength = 2,
@@ -132,7 +136,7 @@ function cbData(chunk) {
       frameBodyLength += (chunk[cursor] << (readFrameBytes * 8)) >>> 0
       cursor += 1
       readFrameBytes += 1
-      if (exp.debug) console.info('headerbyte%d(val=%d)', readFrameBytes, frameBodyLength)
+      if (exp.superDebug) console.info('headerbyte%d(val=%d)', readFrameBytes, frameBodyLength)
     }
     else {
       if (len - cursor >= frameBodyLength) {
@@ -160,7 +164,7 @@ function cbData(chunk) {
         frameBody = new Buffer(0)
       }
       else {
-        if (exp.debug) console.info('body(len=%d)', len - cursor)
+        if (exp.superDebug) console.info('body(len=%d)', len - cursor)
 
         frameBody = Buffer.concat([
           frameBody

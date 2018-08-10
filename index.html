@@ -49,14 +49,19 @@
     <textarea tabindex="5" id="txt-clip"></textarea>
     <div class='fr f0'>
       <button tabindex="6" id="list-ports">Ports</button>
-      <input tabindex='7' id='port-num' />
+      <input tabindex='7' id='port-num' value='19000,19001' />
       <button tabindex="8" id="fwd-port">Fwd</button>
       <button tabindex="9" id="rev-port">Rev</button>
     </div>
     <div class='bb' style='white-space: pre;' id='port-list'>&nbsp;</div>
   </div>
   <script>
+    'option strict';
     var debug = false;
+    function setdebug() {
+      debug = !debug;
+      wsJson({ event: 'debug', val: debug });
+    }
     /*jshint browser:true*/
 
     var BLANK_IMG =
@@ -100,6 +105,8 @@
       ws.binaryType = 'blob'
 
       ws.onclose = function () {
+        g.fillStyle = "#a00";
+        g.fillRect(0, 0, canvas.width, canvas.height);
         console.log('ws close...try reopen in 2 seconds');
         setTimeout(createWs, 2000);
       }
@@ -110,13 +117,20 @@
       ws.onmessage = wsOnMessage;
 
     }
+    function wsJson(obj) {
+      if (ws.readyState === ws.OPEN) {
+        var json = JSON.stringify(obj);
+        if (debug) console.log(json);
+        ws.send(json);
+      } else console.log('websocket is closed');
+    }
     createWs();
 
     canvas.mdown = false;
     canvas.debounce = 0;
     function mouseHandler(t, e) {
       var x = e.clientX / canvas.scrollWidth, y = e.clientY / canvas.scrollHeight;
-      ws.send(JSON.stringify({ event: 'mouse', t: t, x: x, y: y }));
+      wsJson({ event: 'mouse', t: t, x: x, y: y });
       if (debug) console.log(t, canvas.mdown, e.clientX, e.clientY, canvas.scrollWidth, canvas.scrollHeight);
     }
     canvas.addEventListener('mousemove', function (e) {
@@ -144,9 +158,7 @@
         event: 'key', key: e.keyCode,
         mods: [e.shiftKey, e.ctrlKey, e.altKey, e.metaKey, cl], isDown
       }
-      var json = JSON.stringify(obj);
-      if (debug) console.log(json);
-      ws.send(json);
+      wsJson(obj);
     }
     canvas.addEventListener('keydown', function (e) {
       keyHandler(e, true);
@@ -159,7 +171,7 @@
 
     var bPower = document.getElementById('power');
     bPower.onclick = function (e) {
-      ws.send(JSON.stringify({ event: 'power' }));
+      wsJson({ event: 'power' });
     };
 
     var getClip = document.getElementById('get-clip');
@@ -167,10 +179,10 @@
     var setClip = document.getElementById('set-clip');
     getClip.onclick = function (e) {
       txtClip.allowUpdate = true;
-      ws.send(JSON.stringify({ event: 'getclip' }));
+      wsJson({ event: 'getclip' });
     };
     setClip.onclick = function (e) {
-      ws.send(JSON.stringify({ event: 'setclip', text: txtClip.value }));
+      wsJson({ event: 'setclip', text: txtClip.value });
     };
     function getClipResponse(j) {
       if (txtClip.allowUpdate) {
@@ -185,16 +197,16 @@
     var revPort = document.getElementById('rev-port');
     var portNum = document.getElementById('port-num');
     lstPorts.onclick = function () {
-      ws.send(JSON.stringify({ event: 'listports' }));
+      wsJson({ event: 'listports' });
     };
     function getPortsResponse(j) {
       portList.innerHTML = j.data;
     }
     fwdPort.onclick = function () {
-      ws.send(JSON.stringify({ event: 'addport', rev: false, port: portNum.value }));
+      wsJson({ event: 'addport', rev: false, port: portNum.value });
     };
     revPort.onclick = function () {
-      ws.send(JSON.stringify({ event: 'addport', rev: true, port: portNum.value }));
+      wsJson({ event: 'addport', rev: true, port: portNum.value });
     };
 
   </script>
