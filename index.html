@@ -17,7 +17,8 @@
     }
 
     .f0 {
-      flex: none !important;
+      flex: initial !important;
+      flex-shrink: 1;
     }
 
     .fr {
@@ -41,15 +42,15 @@
     <canvas class='bb' tabindex="1" id="canvas"></canvas>
   </div>
   <div class='fc'>
-    <div class='fr f0'>
+    <div class='fr f0 btnr'>
       <button tabindex="2" id="power">Power</button>
       <button tabindex="3" id="get-clip">Get Clipboard</button>
       <button tabindex="4" id="set-clip">Set Clipboard</button>
     </div>
     <textarea tabindex="5" id="txt-clip"></textarea>
-    <div class='fr f0'>
+    <div class='fr f0 btnr'>
       <button tabindex="6" id="list-ports">Ports</button>
-      <input tabindex='7' id='port-num' value='19000,19001' />
+      <input tabindex='7' id='port-num' value='19000,19001' size='1' style='flex:5;' />
       <button tabindex="8" id="fwd-port">Fwd</button>
       <button tabindex="9" id="rev-port">Rev</button>
     </div>
@@ -69,8 +70,26 @@
 
     var canvas = document.getElementById('canvas')
       , g = canvas.getContext('2d')
+      , resM = 25
+      , fcr = (row) => {
+        for (var e of document.querySelectorAll('.btnr')) {
+          e.classList.remove(row ? 'fc' : 'fr');
+          e.classList.add(!row ? 'fc' : 'fr');
+        }
+      }
+      , minW = 0
+      , fnRes = () => {
+        var sw = document.body.scrollWidth + 10;
+        if (document.querySelector('.btnr.fr')) minW = sw;
+        if (window.innerWidth < sw) {
+          fcr(0);
+        } else if (window.innerWidth >= minW) fcr(1);
 
-    canvas.style.maxHeight = (window.innerHeight - 50) + 'px';
+        canvas.style.maxHeight = (window.innerHeight - resM) + 'px'
+        canvas.style.maxWidth = (window.innerWidth - resM) + 'px'
+      };
+    fnRes();
+    window.onresize = fnRes;
 
     function wsOnMessage(message) {
       if (typeof message.data === 'string') {
@@ -86,14 +105,15 @@
         var img = new Image()
         img.onload = function () {
           //if(debug) console.log(img.width, img.height)
-          canvas.width = img.width
-          canvas.height = img.height
-          g.drawImage(img, 0, 0)
-          img.onload = null
-          img.src = BLANK_IMG
-          img = null
-          u = null
-          blob = null
+          canvas.width = img.width;
+          canvas.height = img.height;
+          g.drawImage(img, 0, 0);
+          img.onload = null;
+          img.src = BLANK_IMG;
+          img = null;
+          u = null;
+          blob = null;
+          fnRes();
         }
         var u = URL.createObjectURL(blob)
         img.src = u
