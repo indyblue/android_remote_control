@@ -14,13 +14,13 @@ async function main() {
   execSync(`unzip -ojd ${name} ${zipname}`);
 
   exp.onExit = () => {
-    console.log('stopping reverse tether:');
-    execSync(`./${name} stop`, `./${name}/`);
     try {
+      console.log('stopping reverse tether:');
+      execSync(`./${name} stop`, `./${name}/`);
       execSync(`killall -qs SIGKILL gnirehtet`);
+      if (process.argv.indexOf('-u') > 0)
+        execSync(`./${name} uninstall`, `./${name}/`);
     } catch (e) { }
-    if (process.argv.indexOf('-u') > 0)
-      execSync(`./${name} uninstall`, `./${name}/`);
   };
   exp.onExit();
 

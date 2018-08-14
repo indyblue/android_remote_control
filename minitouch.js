@@ -17,7 +17,7 @@ const exp = module.exports = {
 exp.onExit = () => {
   execSync(`adb shell -x killall ${name}`);
   execSync(`adb shell rm -rf ${exp.adir}`);
-  execSync(`adb shell ls ${exp.adir}`);
+  execSync(`adb shell -x ls ${exp.adir}`);
 };
 exp.onExit();
 

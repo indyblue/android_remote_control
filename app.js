@@ -78,6 +78,12 @@ const onExit = () => {
   minitether.onExit();
   server.close();
   mini0.onExit();
+  if (process.argv.indexOf('-u') < 0) {
+    console.log('*** TO FINISH UNINSTALL ***');
+    console.log(`adb uninstall jp.co.cyberagent.stf`);
+    console.log(`cd ./gnirehtet; ./gnirehtet uninstall`);
+  }
+
 };
 process.on('exit', onExit);
 process.on('SIGTERM', () => process.exit(1));
