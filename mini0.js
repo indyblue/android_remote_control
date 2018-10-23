@@ -46,6 +46,7 @@ exp.onExit = () => {
   }
   for (let proc of procs) {
     if (proc.isRunning) {
+      proc.shouldStop = true;
       console.log(proc.name, 'killing process');
       proc.kill();
     } else console.log(proc.name, 'process already exited');
@@ -75,7 +76,7 @@ function execSync(cmd, pwd) {
   return out;
 }
 
-function exec(cmd, name, pwd) {
+function exec(cmd, name, pwd, restart) {
   console.log('exec', cmd);
   let proc = cp.exec(cmd, {
     encoding: 'utf8', cwd: pwd || '.'
@@ -83,8 +84,13 @@ function exec(cmd, name, pwd) {
   proc.stdout.on('data', d => console.log(name, 'o', d));
   proc.stderr.on('data', d => console.log(name, 'e', d));
   proc.isRunning = true;
+  proc.shouldStop = !restart;
   proc.name = name || cmd;
-  proc.on('exit', () => proc.isRunning = false);
+  proc.on('exit', () => {
+    if(!proc.shouldStop) exec(cmd, name, pwd, restart);
+    proc.isRunning = false;
+    console.log('exit', name);
+  });
   procs.push(proc);
   return proc;
 }

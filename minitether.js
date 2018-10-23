@@ -24,7 +24,7 @@ async function main() {
   };
   exp.onExit();
 
-  let proc = exec(`./${name} run`, name, `./${name}/`);
+  exp.proc = exec(`./${name} run`, name, `./${name}/`, true);
 }
 main();
 
