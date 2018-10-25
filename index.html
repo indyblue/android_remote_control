@@ -149,11 +149,14 @@
     canvas.mdown = false;
     canvas.debounce = 0;
     function mouseHandler(t, e) {
-      var x = e.clientX / canvas.scrollWidth, y = e.clientY / canvas.scrollHeight;
+     	var cx = e.clientX || (e.touches[0]||e.changedTouches[0]||{}).clientX,
+        cy = e.clientY || (e.touches[0]||e.changedTouches[0]||{}).clientY;
+
+      var x = cx / canvas.scrollWidth, y = cy / canvas.scrollHeight;
       wsJson({ event: 'mouse', t: t, x: x, y: y });
-      if (debug) console.log(t, canvas.mdown, e.clientX, e.clientY, canvas.scrollWidth, canvas.scrollHeight);
+      if (debug) console.log(t, canvas.mdown, cx, cy, canvas.scrollWidth, canvas.scrollHeight);
     }
-    canvas.addEventListener('mousemove', function (e) {
+    var fnmm = function (e) {
       if (!canvas.mdown) return;
       if (!canvas.debounce) {
         canvas.debounce++;
@@ -162,15 +165,23 @@
           canvas.debounce = 0;
         }, 100);
       }
-    });
-    canvas.addEventListener('mousedown', function (e) {
+    };
+    canvas.addEventListener('mousemove', fnmm);
+    canvas.addEventListener('touchmove', fnmm);
+    var fnmd = function (e) {
+   	if(canvas.mdown) return;
       canvas.mdown = true;
       mouseHandler('d', e);
-    });
-    canvas.addEventListener('mouseup', function (e) {
+    }; 
+    canvas.addEventListener('mousedown', fnmd);
+    canvas.addEventListener('touchstart', fnmd);
+    var fnmu = function (e) {
+     	if(!canvas.mdown) return;
       canvas.mdown = false;
       mouseHandler('u', e);
-    });
+    };
+    canvas.addEventListener('mouseup', fnmu);
+    canvas.addEventListener('touchend', fnmu);
 
     function keyHandler(e, isDown) {
       var cl = e.getModifierState('CapsLock');
