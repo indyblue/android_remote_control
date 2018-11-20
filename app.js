@@ -6,7 +6,7 @@ var WebSocketServer = require('ws').Server
   , minicap = require('./minicap')
   , minitouch = require('./minitouch')
   , minisvc = require('./miniservice')
-  , minitether = require('./minitether')
+//  , minitether = require('./minitether')
   , mini0 = require('./mini0')
   , { addPort, listPorts } = require('./mini0');
 
@@ -75,7 +75,7 @@ const onExit = () => {
   minicap.onExit();
   minitouch.onExit();
   minisvc.onExit();
-  minitether.onExit();
+//  minitether.onExit();
   server.close();
   mini0.onExit();
   if (process.argv.indexOf('-u') < 0) {
