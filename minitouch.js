@@ -28,6 +28,8 @@ const bdir = 'node_modules/minitouch-prebuilt/prebuilt';
 let dir = bindir(bdir);
 out = execSync(`adb push ${dir}/${name} ${exp.adir}/`);
 
+out = execSync(`adb shell -x chmod +x ${exp.adir}/${name}`);
+
 const procMT = execSocket(`adb shell -x ${exp.adir}/${name}`,
   exp.port, name, cbData);
 

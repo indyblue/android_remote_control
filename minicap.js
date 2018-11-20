@@ -31,6 +31,8 @@ out = execSync(`adb push ${dir}/${name} ${exp.adir}/`);
 dir = libdir(bdir);
 out = execSync(`adb push ${dir}/${name}.so ${exp.adir}/`);
 
+out = execSync(`adb shell -x chmod +x ${exp.adir}/${name}`);
+
 let w = info.w, h = info.h, w2 = Math.round(w / 2), h2 = Math.round(h / 2);
 let args = `-P ${w}x${h}@${w2}x${h2}/0 -S`;
 
