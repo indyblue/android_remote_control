@@ -15,7 +15,8 @@ const procs = [], sockets = [];
 const info = exp.info;
 info.abi = execSync('adb shell getprop ro.product.cpu.abi');
 info.sdk = execSync('adb shell getprop ro.build.version.sdk');
-[info.w, info.h] = execSync(`sh -c "adb shell dumpsys window | grep -Eo 'init=[0-9]+x[0-9]+'"`).match(/\d+/g)
+[info.initDims, info.w, info.h] = execSync(`adb shell dumpsys window`).match(/init=(\d+)x(\d+)/);
+console.log('WxH:', info.w, info.h);
 
 let revertSettings = () => { };
 if (process.argv.indexOf('-f') < 0) {
