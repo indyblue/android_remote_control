@@ -34,6 +34,10 @@
     #canvas {
       display: inline-block;
     }
+
+    .off {
+      background-color: red;
+    }
   </style>
 </head>
 
@@ -41,20 +45,23 @@
   <div class='f0'>
     <canvas class='bb' tabindex="0" id="canvas"></canvas>
   </div>
-  <div class='fc'>
+  <div class='fc' id='controls'>
     <div class='fr f0 btnr'>
       <button tabindex="2" id="power">Power</button>
       <button tabindex="3" id="get-clip">Get Clipboard</button>
       <button tabindex="4" id="set-clip">Set Clipboard</button>
     </div>
-    <textarea tabindex="5" id="txt-clip"></textarea>
+    <textarea tabindex="5" id="txt-clip" cols='10'></textarea>
     <div class='fr f0 btnr'>
       <button tabindex="6" id="list-ports">Ports</button>
       <input tabindex='7' id='port-num' value='19000,19001,7007' size='1' style='flex:5;' />
       <button tabindex="8" id="fwd-port">Fwd</button>
       <button tabindex="9" id="rev-port">Rev</button>
     </div>
-    <div class='bb' style='white-space: pre;' id='port-list'>&nbsp;</div>
+    <div class='bb' style='white-space: pre-wrap;' id='port-list'>&nbsp;</div>
+    <div class='fr f0 btnr'>
+      <button class='off' tabindex="10" id="minicap">Minicap</button>
+    </div>
   </div>
   <script>
     'option strict';
@@ -70,6 +77,7 @@
 
     var canvas = document.getElementById('canvas')
       , g = canvas.getContext('2d')
+      , elClts = document.getElementById('controls')
       , resM = 25
       , fcr = (row) => {
         for (var e of document.querySelectorAll('.btnr')) {
@@ -79,15 +87,14 @@
       }
       , minW = 0
       , fnRes = () => {
-        var sw = document.body.scrollWidth + 10;
-        if (document.querySelector('.btnr.fr')) minW = sw;
-        if (window.innerWidth < sw) {
-          fcr(0);
-        } else if (window.innerWidth >= minW) fcr(1);
+        fcr(elClts.scrollWidth > 310);
 
         canvas.style.maxHeight = (window.innerHeight - resM) + 'px'
         canvas.style.maxWidth = (window.innerWidth - resM) + 'px'
-      };
+      }
+      , minicap = document.getElementById('minicap')
+      , landscape = false;
+
     fnRes();
     window.onresize = fnRes;
 
@@ -98,15 +105,20 @@
         if (j) {
           if (j.type == 'GetClipboardResponse') getClipResponse(j);
           if (j.type == 'ports') getPortsResponse(j);
+          if (j.type == 'minicapStatus') {
+            if (!j.state) blankScreen();
+            console.log(message.data);
+          }
         }
       } else {
         var blob = new Blob([message.data], { type: 'image/jpeg' })
         var URL = window.URL || window.webkitURL
         var img = new Image()
         img.onload = function () {
-          //if(debug) console.log(img.width, img.height)
+          console.log(img.width, img.height)
           canvas.width = img.width;
           canvas.height = img.height;
+          fnOrientation(img.width, img.height);
           g.drawImage(img, 0, 0);
           img.onload = null;
           img.src = BLANK_IMG;
@@ -114,6 +126,7 @@
           u = null;
           blob = null;
           fnRes();
+          minicap.classList.remove('off');
         }
         var u = URL.createObjectURL(blob)
         img.src = u
@@ -125,8 +138,7 @@
       ws.binaryType = 'blob'
 
       ws.onclose = function () {
-        g.fillStyle = "#a00";
-        g.fillRect(0, 0, canvas.width, canvas.height);
+        blankScreen();
         console.log('ws close...try reopen in 2 seconds');
         setTimeout(createWs, 2000);
       }
@@ -146,13 +158,26 @@
     }
     createWs();
 
+    function blankScreen() {
+      g.fillStyle = "#a00";
+      g.fillRect(0, 0, canvas.width, canvas.height);
+      minicap.classList.add('off');
+    }
+
+    function fnOrientation(w, h) {
+      landscape = w / h > 1;
+      document.body.classList.remove(!landscape ? 'fc' : 'fr');
+      document.body.classList.add(landscape ? 'fc' : 'fr');
+    }
+
     canvas.mdown = false;
     canvas.debounce = 0;
     function mouseHandler(t, e) {
-     	var cx = e.clientX || (e.touches[0]||e.changedTouches[0]||{}).clientX,
-        cy = e.clientY || (e.touches[0]||e.changedTouches[0]||{}).clientY;
+      var cx = e.clientX || (e.touches[0] || e.changedTouches[0] || {}).clientX,
+        cy = e.clientY || (e.touches[0] || e.changedTouches[0] || {}).clientY;
 
       var x = cx / canvas.scrollWidth, y = cy / canvas.scrollHeight;
+      if (landscape) { var tmp = x; x = 1 - y; y = tmp; }
       wsJson({ event: 'mouse', t: t, x: x, y: y });
       if (debug) console.log(e.type, t, canvas.mdown, cx, cy, canvas.scrollWidth, canvas.scrollHeight);
     }
@@ -169,16 +194,16 @@
     canvas.addEventListener('mousemove', fnmm);
     canvas.addEventListener('touchmove', fnmm);
     var fnmd = function (e) {
-   	if(canvas.mdown) return;
+      if (canvas.mdown) return;
       canvas.mdown = true;
       mouseHandler('d', e);
       e.preventDefault();
       canvas.focus();
-    }; 
+    };
     canvas.addEventListener('mousedown', fnmd);
     canvas.addEventListener('touchstart', fnmd);
     var fnmu = function (e) {
-     	if(!canvas.mdown) return;
+      if (!canvas.mdown) return;
       canvas.mdown = false;
       mouseHandler('u', e);
       e.preventDefault();
@@ -243,6 +268,9 @@
       wsJson({ event: 'addport', rev: true, port: portNum.value });
     };
 
+    minicap.onclick = function () {
+      wsJson({ event: 'minicap' });
+    };
   </script>
 </body>
 

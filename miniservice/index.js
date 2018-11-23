@@ -1,5 +1,5 @@
 'option strict';
-const { execSocket, execSync, fetchFile } = require('../mini0'),
+const { execSocket, execSync, fetchFile, info } = require('../mini0'),
   pbsvc = require('./protobuf');
 
 
@@ -64,17 +64,35 @@ function fnServiceStuff(pb) {
     resolveRes = (id, retval) => {
       if (typeof id !== 'number' || id == 0) return;
       var cb = respRes[id];
-      if (typeof cb === 'function') cb(retval);
-      else console.log('could not match promise for service/agent response', id, retval);
-      respRes[id] = null;
+      if (typeof cb === 'function') {
+        cb(retval);
+        respRes[id] = null;
+        return true;
+      } else console.log('could not match promise for service/agent response', id, retval);
+      return false;
     };
 
+  exp.cbRotate = rot => { console.log('no rotation callback', rot); };
   function cbData(d) {
     var msg = null;
     try { msg = pb.handleMessage(d); } catch (e) { }
     if (msg == null) return;
-    resolveRes(msg.id, msg);
-    if (msg && msg.type != 'BatteryEvent') console.log(JSON.stringify(msg));
+    var success = resolveRes(msg.id, msg);
+    switch (msg.type) {
+      case 'RotationEvent':
+        info.rot = msg.message.rotation;
+        exp.cbRotate(msg.message.rotation);
+        // exp.getDispl()
+        //   .then(x => console.log(x))
+        //   .catch(e => console.log(e));
+        break;
+      case 'ConnectivityEvent':
+      case 'BrowserPackageEvent':
+      case 'BatteryEvent':
+        break;
+      default:
+        console.log(JSON.stringify(msg));
+    }
   }
 
   exp.doPower = () => {
@@ -93,6 +111,12 @@ function fnServiceStuff(pb) {
   exp.setClip = (txt) => new Promise((res, rej) => {
     let id = addRes(res, rej);
     var req = pb.setClip(id, txt);
+    service.socket.write(req);
+  });
+
+  exp.getDispl = () => new Promise((res, rej) => {
+    let id = addRes(res, rej);
+    var req = pb.getDispl(id);
     service.socket.write(req);
   });
 

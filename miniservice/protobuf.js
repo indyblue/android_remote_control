@@ -55,6 +55,10 @@ exp.load = async () => {
     return encType('GetClipboardRequest', { type: tClip.TEXT }, id);
   };
 
+  obj.getDispl = (id) => {
+    return encType('GetDisplayRequest', { id: 0 }, id);
+  };
+
   function encType(type, oType, id) {
     let pbType = lt(type);
     let verify = pbType.verify(oType);

@@ -1,5 +1,6 @@
 'option strict';
-const { execSocket, execSync, bindir, libdir, fwdAbs, info } = require('./mini0'),
+const { execSocket, execSync, bindir, libdir, info,
+  closeSocket, killProc, wsSendBin, wsSendObj } = require('./mini0'),
   ptool = require('path'),
   net = require('net');
 
@@ -7,13 +8,14 @@ const name = 'minicap';
 const exp = module.exports = {
   port: 1717,
   adir: '/data/local/tmp/' + name,
-  webSockets: [],
   debug: false,
   superDebug: false
 };
 /**************************************************************************** */
 // child process stuff
 /**************************************************************************** */
+
+
 exp.onExit = () => {
   execSync(`adb shell -x killall ${name}`);
   execSync(`adb shell rm -rf ${exp.adir}`);
@@ -21,47 +23,89 @@ exp.onExit = () => {
 };
 exp.onExit();
 
-let out = execSync(`adb shell mkdir ${exp.adir}`);
+exp.init = () => {
+  let out = execSync(`adb shell mkdir ${exp.adir}`);
 
-const bdir = 'node_modules/minicap-prebuilt/prebuilt';
+  const bdir = 'node_modules/minicap-prebuilt/prebuilt';
 
-let dir = bindir(bdir);
-out = execSync(`adb push ${dir}/${name} ${exp.adir}/`);
+  let dir = bindir(bdir);
+  out = execSync(`adb push ${dir}/${name} ${exp.adir}/`);
 
-dir = libdir(bdir);
-out = execSync(`adb push ${dir}/${name}.so ${exp.adir}/`);
+  dir = libdir(bdir);
+  out = execSync(`adb push ${dir}/${name}.so ${exp.adir}/`);
 
-out = execSync(`adb shell -x chmod +x ${exp.adir}/${name}`);
+  out = execSync(`adb shell -x chmod +x ${exp.adir}/${name}`);
+};
+exp.init();
 
-let w = info.w, h = info.h, w2 = Math.round(w / 2), h2 = Math.round(h / 2);
-let args = `-P ${w}x${h}@${w2}x${h2}/0 -S`;
+exp.proc = null;
+exp.start = (force) => {
+  if(!force && exp.proc) return;
+  let w = info.w, h = info.h, r = info.rot,
+    w2 = Math.round(w / 2), h2 = Math.round(h / 2);
+  let args = `-P ${w}x${h}@${w2}x${h2}/${r} -S`;
 
-const cpMinicap = execSocket(`adb shell -x LD_LIBRARY_PATH=${exp.adir}/ ${exp.adir}/${name} ${args}`,
-  exp.port, name, cbData);
+  cbDataInit();
+  exp.proc = execSocket(`adb shell -x LD_LIBRARY_PATH=${exp.adir}/ ${exp.adir}/${name} ${args}`,
+    exp.port, name, cbData);
 
-
-let readBannerBytes = 0,
-  bannerLength = 2,
-  readFrameBytes = 0,
-  frameBodyLength = 0,
-  frameBody = new Buffer(0),
-  banner = {
-    version: 0
-    , length: 0
-    , pid: 0
-    , realWidth: 0
-    , realHeight: 0
-    , virtualWidth: 0
-    , virtualHeight: 0
-    , orientation: 0
-    , quirks: 0
+  exp.proc.cbSocketStatus = x => {
+    wsSendObj({ type: 'minicapStatus', state: x });
   };
 
+  exp.sendLastFrame();
+};
+
+exp.stop = () => {
+  if (exp.proc) {
+    closeSocket(exp.proc.socket);
+    killProc(exp.proc);
+    exp.proc = null;
+  }
+  execSync(`adb shell -x killall ${name}`);
+};
+exp.restart = () => {
+  exp.stop();
+  setTimeout(exp.start, 100);
+};
+
+exp.toggle = on => {
+  if (typeof on === 'boolean') {
+    if (on) exp.start();
+    else exp.stop();
+  } else {
+    if (exp.proc) exp.stop();
+    else exp.start();
+  }
+};
+
+let readBannerBytes, bannerLength, readFrameBytes, frameBodyLength,
+  frameBody, banner;
+function cbDataInit() {
+  readBannerBytes = 0,
+    bannerLength = 2,
+    readFrameBytes = 0,
+    frameBodyLength = 0,
+    frameBody = new Buffer(0),
+    banner = {
+      version: 0
+      , length: 0
+      , pid: 0
+      , realWidth: 0
+      , realHeight: 0
+      , virtualWidth: 0
+      , virtualHeight: 0
+      , orientation: 0
+      , quirks: 0
+    };
+}
+cbDataInit();
+
 let lastFrame = null;
-exp.sendLastFrame = ws => {
+exp.sendLastFrame = () => {
   if (lastFrame) {
     console.log('sending initial frame', lastFrame.length);
-    ws.send(lastFrame, { binary: true });
+    wsSendBin(lastFrame);
   }
 };
 
@@ -157,9 +201,7 @@ function cbData(chunk) {
         }
 
         lastFrame = frameBody;
-        for (let ws of exp.webSockets) ws.send(frameBody, {
-          binary: true
-        })
+        wsSendBin(frameBody);
 
         cursor += frameBodyLength
         frameBodyLength = readFrameBytes = 0

@@ -6,7 +6,20 @@ const cp = require('child_process'),
 fs = require('fs'),
   net = require('net');
 
-const exp = module.exports = { info: {}, exec, execSync, fetchFile };
+const exp = module.exports = {
+  info: {}, exec, execSync, fetchFile,
+  webSockets: []
+};
+
+exp.wsSendBin = o => {
+  for (let ws of exp.webSockets) ws.send(o, {
+    binary: true
+  });
+};
+exp.wsSendObj = o => {
+  for (let ws of exp.webSockets) ws.sendObj(o);
+};
+
 
 const procs = [], sockets = [];
 /**************************************************************************** */
@@ -15,11 +28,16 @@ const procs = [], sockets = [];
 const info = exp.info;
 info.abi = execSync('adb shell getprop ro.product.cpu.abi');
 info.sdk = execSync('adb shell getprop ro.build.version.sdk');
-[info.initDims, info.w, info.h] = execSync(`adb shell dumpsys window`).match(/init=(\d+)x(\d+)/);
-console.log('WxH:', info.w, info.h);
+
+let dumpsys = execSync(`adb shell dumpsys window`);
+[info.junk, info.w, info.h] = dumpsys.match(/init=(\d+)x(\d+)/);
+[info.junk, info.rot] = dumpsys.match(/mCurrentRotation=(\d+)/);
+if (info.rot == 1) info.rot = 90;
+console.log('WxH & Rot:', info.w, info.h, info.rot);
+delete info.junk;
 
 let revertSettings = () => { };
-if (process.argv.indexOf('-f') < 0) {
+if (process.argv.indexOf('-s') > 0) {
   let show_touches = execSync('adb shell settings get system show_touches');
   let scr_off_time = execSync('adb shell settings get system screen_off_timeout');
   let scr_bl_mode = execSync('adb shell settings get system screen_brightness_mode');
@@ -36,22 +54,28 @@ if (process.argv.indexOf('-f') < 0) {
     execSync(`adb shell settings put system screen_brightness_mode ${scr_bl_mode}`);
   };
 }
+exp.closeSocket = socket => {
+  if (!socket) return;
+  if (socket.isOpen) {
+    console.log(socket.name, 'closing socket');
+    socket.shouldClose = true;
+    socket.end();
+  }
+  else console.log(socket.name, 'socket already closed');
+};
+exp.killProc = proc => {
+  if (!proc) return;
+  if (proc.isRunning) {
+    proc.shouldStop = true;
+    console.log(proc.name, 'killing process');
+    proc.kill();
+  } else console.log(proc.name, 'process already exited');
+};
+
 exp.onExit = () => {
   revertSettings();
-  for (let socket of sockets) {
-    if (socket.isOpen) {
-      console.log(socket.name, 'closing socket');
-      socket.end();
-    }
-    else console.log(socket.name, 'socket already closed');
-  }
-  for (let proc of procs) {
-    if (proc.isRunning) {
-      proc.shouldStop = true;
-      console.log(proc.name, 'killing process');
-      proc.kill();
-    } else console.log(proc.name, 'process already exited');
-  }
+  for (let socket of sockets) exp.closeSocket(socket);
+  for (let proc of procs) exp.killProc(proc);
 };
 
 /**************************************************************************** */
@@ -88,7 +112,7 @@ function exec(cmd, name, pwd, restart) {
   proc.shouldStop = !restart;
   proc.name = name || cmd;
   proc.on('exit', () => {
-    if(!proc.shouldStop) exec(cmd, name, pwd, restart);
+    if (!proc.shouldStop) exec(cmd, name, pwd, restart);
     proc.isRunning = false;
     console.log('exit', name);
   });
@@ -124,9 +148,12 @@ function trySocket(proc, port, name, cbData) {
   proc.socket.on('error', err => console.log('stream error', port, name, err));
   proc.socket.isOpen = true;
   proc.socket.name = name;
+  if (proc.cbSocketStatus) proc.cbSocketStatus(true);
   sockets.push(proc.socket);
   proc.socket.on('end', () => {
     proc.socket.isOpen = false;
+    if (proc.cbSocketStatus) proc.cbSocketStatus(false);
+    if (proc.socket.shouldClose) return;
     console.log(`socket ${port}/${name} has closed - program may need to be restarted.`);
     if (proc.socketTry < 5) setTimeout(() => {
       trySocket(proc, port, name, cbData);

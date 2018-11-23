@@ -6,7 +6,7 @@ var WebSocketServer = require('ws').Server
   , minicap = require('./minicap')
   , minitouch = require('./minitouch')
   , minisvc = require('./miniservice')
-//  , minitether = require('./minitether')
+  //  , minitether = require('./minitether')
   , mini0 = require('./mini0')
   , { addPort, listPorts } = require('./mini0');
 
@@ -22,12 +22,13 @@ function requestListener(req, res) {
 var server = http.createServer(requestListener);
 var wss = new WebSocketServer({ server: server });
 
-var sockets = minicap.webSockets;
+var sockets = mini0.webSockets;
 wss.on('connection', function (ws) {
+  ws.sendObj = o => ws.send(JSON.stringify(o));
   sockets.push(ws);
-  console.info('Got a client')
+  console.info('Got a client');
 
-  minicap.sendLastFrame(ws);
+  minicap.sendLastFrame();
 
   ws.on('message', function (d) {
     //console.log(d);
@@ -36,14 +37,16 @@ wss.on('connection', function (ws) {
     if (j) {
       if (j.event === 'mouse') minitouch.action(j.t, j.x, j.y);
       else if (j.event === 'power') minisvc.doPower();
+      else if (j.event === 'minicap') minicap.toggle();
       else if (j.event === 'key') minisvc.onKey(j.key, j.mods, j.isDown);
       else if (j.event === 'getclip') minisvc.getClip().then(msg =>
-        ws.send(JSON.stringify(msg)));
+        ws.sendObj(msg));
       else if (j.event === 'setclip') minisvc.setClip(j.text);
-      else if (j.event === 'listports') ws.send(JSON.stringify({ type: 'ports', data: listPorts() }));
+      else if (j.event === 'listports')
+        ws.sendObj({ type: 'ports', data: listPorts() });
       else if (j.event === 'addport') {
         for (var p of j.port.split(',')) addPort(p, j.rev);
-        ws.send(JSON.stringify({ type: 'ports', data: listPorts() }));
+        ws.sendObj({ type: 'ports', data: listPorts() });
       }
       else if (j.event === 'debug') {
         console.log('debug', j.val);
@@ -56,7 +59,10 @@ wss.on('connection', function (ws) {
     var idx = sockets.indexOf(ws);
     if (idx >= 0) sockets.splice(idx, 1);
     console.info('lost a client: ' + idx);
-  })
+  });
+
+  minicap.start();
+  minisvc.cbRotate = () => minicap.restart(true);
 });
 
 server.listen(PORT);
@@ -75,7 +81,7 @@ const onExit = () => {
   minicap.onExit();
   minitouch.onExit();
   minisvc.onExit();
-//  minitether.onExit();
+  //  minitether.onExit();
   server.close();
   mini0.onExit();
   if (process.argv.indexOf('-u') < 0) {
