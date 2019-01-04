@@ -31,7 +31,7 @@ info.sdk = execSync('adb shell getprop ro.build.version.sdk');
 
 let dumpsys = execSync(`adb shell dumpsys window`);
 [info.junk, info.w, info.h] = dumpsys.match(/init=(\d+)x(\d+)/);
-[info.junk, info.rot] = dumpsys.match(/mCurrentRotation=(\d+)/);
+[info.junk, info.rot] = dumpsys.match(/mCurrentRotation=(?:ROTATION_)?(\d+)/);
 if (info.rot == 1) info.rot = 90;
 console.log('WxH & Rot:', info.w, info.h, info.rot);
 delete info.junk;
