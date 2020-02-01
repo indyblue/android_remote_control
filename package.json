@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "protobufjs": "^6.8.8",
-    "ws": "^0.7.2"
+    "ws": "^7.2.1"
   },
   "name": "android_remote",
   "description": "Very lightweight android remote view/control over ADB.",
