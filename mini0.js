@@ -160,6 +160,7 @@ function trySocket(proc, port, name, cbData) {
     }, 2000);
   });
 }
+exp.trySocket = trySocket;
 
 /**************************************************************************** */
 // url fetch stuff

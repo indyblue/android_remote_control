@@ -51,7 +51,7 @@ wss.on('connection', function (ws) {
       else if (j.event === 'debug') {
         console.log('debug', j.val);
         minicap.debug = j.val;
-        minitouch.debug = j.val;
+        // minitouch.debug = j.val;
       }
     }
   });
@@ -79,7 +79,7 @@ process.stdin.on('data', d => {
 const onExit = () => {
   console.log('stopping server', PORT);
   minicap.onExit();
-  minitouch.onExit();
+  // minitouch.onExit();
   minisvc.onExit();
   //  minitether.onExit();
   server.close();

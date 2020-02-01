@@ -1,7 +1,5 @@
 {
   "dependencies": {
-    "minicap-prebuilt": "^2.2.0",
-    "minitouch-prebuilt": "^1.2.0",
     "protobufjs": "^6.8.8",
     "ws": "^0.7.2"
   },

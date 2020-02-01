@@ -4,4 +4,5 @@
 .vscode/
 package-lock.json
 *.apk
+minicap-prebuilt
 gnirehtet*

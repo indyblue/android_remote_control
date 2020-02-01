@@ -8,7 +8,7 @@ const exp = module.exports = { debug: false };
 async function main() {
   var [pb] = await Promise.all([
     pbsvc.load(),
-    loadStfService()
+    // loadStfService()
   ]);
   fnServiceStuff(pb);
 }
@@ -30,7 +30,7 @@ function fnServiceStuff(pb) {
 
   let sPort = 1719, aPort = 1720;
 
-  let service = execSocket(`adb shell -x am startservice \
+  let service = execSocket(`adb shell -x am start-foreground-service \
     -a jp.co.cyberagent.stf.ACTION_START \
     -n jp.co.cyberagent.stf/.Service`,
     sPort, 'stfservice', cbData);

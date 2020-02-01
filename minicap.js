@@ -26,7 +26,9 @@ exp.onExit();
 exp.init = () => {
   let out = execSync(`adb shell mkdir ${exp.adir}`);
 
-  const bdir = 'node_modules/minicap-prebuilt/prebuilt';
+  // android 10 prebuilts available in comment here:
+  // https://github.com/openstf/minicap/pull/190
+  const bdir = 'minicap-prebuilt/prebuilt';
 
   let dir = bindir(bdir);
   out = execSync(`adb push ${dir}/${name} ${exp.adir}/`);
