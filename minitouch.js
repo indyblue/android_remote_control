@@ -9,7 +9,7 @@ const exp = module.exports = {
   adir: '/data/local/tmp/' + name,
   webSockets: [],
   action: () => { },
-  debug: true
+  debug: false
 };
 /**************************************************************************** */
 // child process stuff

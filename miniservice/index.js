@@ -43,8 +43,8 @@ function fnServiceStuff(pb) {
     execSync(`adb shell -x am stopservice \
       -a jp.co.cyberagent.stf.ACTION_STOP \
       -n jp.co.cyberagent.stf/.Service`);
-    if (process.argv.indexOf('-u') > 0)
-      execSync(`adb uninstall jp.co.cyberagent.stf`);
+    //if (process.argv.indexOf('-u') > 0)
+    execSync(`adb uninstall jp.co.cyberagent.stf`);
   };
 
   const dataBuff = new ArrayBuffer(0),
